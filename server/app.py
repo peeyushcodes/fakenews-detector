@@ -175,7 +175,13 @@ endpoints:
 @app.get("/openenv.yaml", response_class=PlainTextResponse)
 def openenv_yaml():
     return OPENENV_YAML
+def main():
+    import uvicorn
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
 
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
