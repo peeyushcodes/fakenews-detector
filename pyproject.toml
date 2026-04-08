@@ -1,0 +1,15 @@
+[project]
+name = "fakenews-detector"
+version = "0.1.0"
+description = "Fake News Detection OpenEnv Environment"
+authors = [
+  { name="Peeyush Kumar" }
+]
+dependencies = [
+  "openai",
+  "fastapi",
+  "uvicorn"
+]
+
+[tool.openenv]
+entrypoint = "server:app"
