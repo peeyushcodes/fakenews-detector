@@ -75,9 +75,9 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     print(f"[STEP] step={step} action={action_log} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
 
 
-def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, rewards: List[float], score: float = 0.01) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.4f} rewards={rewards_str}", flush=True)
 
 
 # ─────────────────────────────────────────────
@@ -319,11 +319,12 @@ def run_task(client, tavily: TavilyClient, task_name: str) -> dict:
         rewards     = [0.01]
 
     # Re-evaluate score outside try-catch to ensure we always clamp it!
-    score   = sum(rewards) / max(len(rewards), 1) if rewards else 0.01
+    # In RL, task score is the episodic return (sum of rewards)
+    score   = sum(rewards) if rewards else 0.01
     score   = round(min(max(score, 0.01), 0.99), 3)
     success = score >= 0.3
 
-    log_end(success=success, steps=steps_taken, rewards=rewards)
+    log_end(success=success, steps=steps_taken, rewards=rewards, score=score)
     return {
         "task":    task_name,
         "success": success,
@@ -353,7 +354,7 @@ def main():
         for task_name in TASKS:
             log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
             log_step(step=1, action="llm_init_failed", reward=0.01, done=True, error=str(exc)[:100])
-            log_end(success=False, steps=1, rewards=[0.01])
+            log_end(success=False, steps=1, rewards=[0.01], score=0.01)
         return
 
     try:

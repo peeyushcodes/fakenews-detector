@@ -314,6 +314,10 @@ class FakeNewsEnv:
         claim_data = self.task["claims"][self._claim_index]
         reward, feedback, info = grade_action(action, claim_data, self._step, self._max_steps)
 
+        # IMPORTANT: OpenEnv expects the episodic cumulative return to be bounded strictly in (0, 1).
+        # Since an episode has multiple claims, we must normalize the step reward by total claims.
+        reward = reward / self._total_claims
+
         self._rewards.append(reward)
         self._step += 1
         self._claim_index += 1
@@ -336,8 +340,8 @@ class FakeNewsEnv:
     def state(self) -> Dict[str, Any]:
         """Return current environment state."""
         raw_rewards = self._rewards
-        avg_reward = round(sum(raw_rewards) / max(len(raw_rewards), 1), 3) if raw_rewards else 0.01
-        avg_reward = round(min(max(avg_reward, 0.01), 0.99), 3)
+        cum_reward = sum(raw_rewards) if raw_rewards else 0.01
+        cum_reward = round(min(max(cum_reward, 0.01), 0.99), 3)
         return {
             "task_name": self.task_name,
             "difficulty": self.task["difficulty"],
@@ -346,8 +350,8 @@ class FakeNewsEnv:
             "claim_index": self._claim_index,
             "total_claims": self._total_claims,
             "done": self._done,
-            "rewards_so_far": [round(min(max(r, 0.01), 0.99), 3) for r in raw_rewards],
-            "avg_reward": avg_reward,
+            "rewards_so_far": raw_rewards,
+            "cumulative_reward": cum_reward,
         }
 
     def _make_observation(self, feedback: Optional[str] = None, final: bool = False) -> FakeNewsObservation:
