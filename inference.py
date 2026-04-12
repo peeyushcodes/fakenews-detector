@@ -84,11 +84,14 @@ def log_end(success: bool, steps: int, rewards: List[float]) -> None:
 #  Step 1: Tavily Web Search
 # ─────────────────────────────────────────────
 
-def search_web(tavily: TavilyClient, claim: str) -> str:
+def search_web(tavily, claim: str) -> str:
     """
     Search the web for evidence about the claim.
     Returns a formatted string of search results to feed into LLM.
     """
+    if not tavily:
+        return "Web search unavailable. Please evaluate using internal knowledge and reasoning."
+        
     try:
         query = claim[:200]  # Keep it focused
 
@@ -332,24 +335,15 @@ def run_task(client, tavily: TavilyClient, task_name: str) -> dict:
 # ─────────────────────────────────────────────
 
 def main():
-    if not API_KEY or not API_BASE_URL:
-        print("[ERROR] API_KEY or API_BASE_URL not set. These are injected by the platform.", flush=True)
-        for task_name in TASKS:
-            log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
-            log_step(step=1, action="missing_api_key", reward=0.0, done=True, error="API_KEY_not_set")
-            log_end(success=False, steps=1, rewards=[0.0])
-        return
-
+    if "API_KEY" not in os.environ or "API_BASE_URL" not in os.environ:
+        print("[ERROR] API_KEY or API_BASE_URL not set in os.environ.", flush=True)
+        # Proceed anyway to attempt fallback or let it crash on openai init
+        
     if not TAVILY_API_KEY:
-        print("[ERROR] TAVILY_API_KEY not set. Export it before running.", flush=True)
-        for task_name in TASKS:
-            log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
-            log_step(step=1, action="missing_api_key", reward=0.0, done=True, error="TAVILY_API_KEY_not_set")
-            log_end(success=False, steps=1, rewards=[0.0])
-        return
+        print("[WARNING] TAVILY_API_KEY not set. Proceeding without web search.", flush=True)
 
     try:
-        client = openai.OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+        client = openai.OpenAI(base_url=os.environ["API_BASE_URL"], api_key=os.environ["API_KEY"])
         print(f"[INFO] OpenAI client loaded: {MODEL_NAME}", flush=True)
     except Exception as exc:
         print(f"[ERROR] LLM init failed: {exc}", flush=True)
@@ -360,15 +354,11 @@ def main():
         return
 
     try:
-        tavily = TavilyClient(api_key=TAVILY_API_KEY)
+        tavily = TavilyClient(api_key=TAVILY_API_KEY) if TAVILY_API_KEY else None
         print(f"[INFO] Tavily client ready", flush=True)
     except Exception as exc:
-        print(f"[ERROR] Tavily init failed: {exc}", flush=True)
-        for task_name in TASKS:
-            log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
-            log_step(step=1, action="tavily_init_failed", reward=0.0, done=True, error=str(exc)[:100])
-            log_end(success=False, steps=1, rewards=[0.0])
-        return
+        print(f"[WARNING] Tavily init failed: {exc}. Proceeding without web search.", flush=True)
+        tavily = None
 
     print(f"[INFO] Space URL  : {SPACE_URL}", flush=True)
     print(f"[INFO] Tasks      : {TASKS}", flush=True)
