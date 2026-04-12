@@ -172,7 +172,7 @@ def grade_action(action: FakeNewsAction, claim_data: dict, step: int, max_steps:
       - Reasoning quality:        0.25
       - Evidence quality:         0.15
     """
-    score = 0.0
+    score = 0.01  # minimum safe starting value, clamped again at end
     correct_verdict = action.verdict.lower() == claim_data["correct_verdict"].lower()
     
     # 1. Verdict correctness (0.40)
@@ -192,13 +192,13 @@ def grade_action(action: FakeNewsAction, claim_data: dict, step: int, max_steps:
         # Appropriate confidence = confidence roughly matches certainty level
         expected_confidence = 1.0 - (difficulty * 0.3)  # harder → slightly lower expected confidence
         conf_delta = abs(action.confidence - expected_confidence)
-        confidence_score = max(0.0, 0.20 - conf_delta * 0.20)
+        confidence_score = max(0.01, 0.20 - conf_delta * 0.20)
         if conf_delta < 0.25:
             confidence_appropriate = True
     else:
         # Wrong verdict with high confidence = bad
         if action.confidence > 0.8:
-            confidence_score = 0.0
+            confidence_score = 0.01  # small non-zero so score never hits exact 0
         elif action.confidence > 0.5:
             confidence_score = 0.05
         else:
@@ -207,7 +207,7 @@ def grade_action(action: FakeNewsAction, claim_data: dict, step: int, max_steps:
 
     # 3. Reasoning quality (0.25)
     reasoning_words = len(action.reasoning.split())
-    reasoning_score = 0.0
+    reasoning_score = 0.01  # minimum safe starting value
     if reasoning_words >= 50:
         reasoning_score = 0.25
     elif reasoning_words >= 30:
@@ -224,7 +224,7 @@ def grade_action(action: FakeNewsAction, claim_data: dict, step: int, max_steps:
     score += reasoning_score
 
     # 4. Evidence quality (0.15)
-    evidence_score = 0.0
+    evidence_score = 0.01  # minimum safe starting value
     num_evidence = len(action.key_evidence)
     if num_evidence >= 3:
         evidence_score = 0.15
@@ -254,10 +254,10 @@ def grade_action(action: FakeNewsAction, claim_data: dict, step: int, max_steps:
         "reasoning_words": reasoning_words,
         "evidence_count": len(valid_evidence),
         "partial_scores": {
-            "verdict": 0.40 if correct_verdict else 0.0,
-            "confidence": round(confidence_score, 3),
-            "reasoning": round(reasoning_score, 3),
-            "evidence": round(evidence_score, 3),
+            "verdict": 0.40 if correct_verdict else 0.01,
+            "confidence": round(max(confidence_score, 0.01), 3),
+            "reasoning": round(max(reasoning_score, 0.01), 3),
+            "evidence": round(max(evidence_score, 0.01), 3),
         },
     }
 

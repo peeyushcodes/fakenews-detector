@@ -278,7 +278,7 @@ def run_task(client, tavily: TavilyClient, task_name: str) -> dict:
     rewards:     List[float] = []
     steps_taken: int         = 0
     success:     bool        = False
-    score:       float       = 0.0
+    score:       float       = 0.01
 
     try:
         reset_data  = env_reset(task_name)
@@ -294,11 +294,12 @@ def run_task(client, tavily: TavilyClient, task_name: str) -> dict:
             try:
                 result = env_step(task_name, action)
             except Exception as e:
-                log_step(step=step, action=action_str, reward=0.0, done=True, error=str(e)[:100])
+                log_step(step=step, action=action_str, reward=0.01, done=True, error=str(e)[:100])
                 steps_taken = step
                 break
 
-            reward = float(result.get("reward", 0.0))
+            reward = float(result.get("reward", 0.01))
+            reward = round(min(max(reward, 0.01), 0.99), 3)  # clamp immediately
             done   = bool(result.get("done",   False))
 
             rewards.append(reward)
@@ -310,15 +311,17 @@ def run_task(client, tavily: TavilyClient, task_name: str) -> dict:
             if done:
                 break
 
-        score   = sum(rewards) / max(len(rewards), 1) if rewards else 0.0
-        score   = round(min(max(score, 0.01), 0.99), 3)
-        success = score >= 0.3
-
     except Exception as exc:
         print(f"[DEBUG] Task error: {exc}", flush=True)
-        if not rewards:
-            steps_taken = 1
-            rewards     = [0.0]
+    
+    if not rewards:
+        steps_taken = 1
+        rewards     = [0.01]
+
+    # Re-evaluate score outside try-catch to ensure we always clamp it!
+    score   = sum(rewards) / max(len(rewards), 1) if rewards else 0.01
+    score   = round(min(max(score, 0.01), 0.99), 3)
+    success = score >= 0.3
 
     log_end(success=success, steps=steps_taken, rewards=rewards)
     return {
@@ -349,8 +352,8 @@ def main():
         print(f"[ERROR] LLM init failed: {exc}", flush=True)
         for task_name in TASKS:
             log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
-            log_step(step=1, action="llm_init_failed", reward=0.0, done=True, error=str(exc)[:100])
-            log_end(success=False, steps=1, rewards=[0.0])
+            log_step(step=1, action="llm_init_failed", reward=0.01, done=True, error=str(exc)[:100])
+            log_end(success=False, steps=1, rewards=[0.01])
         return
 
     try:
