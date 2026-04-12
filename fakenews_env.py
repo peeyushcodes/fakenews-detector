@@ -238,7 +238,7 @@ def grade_action(action: FakeNewsAction, claim_data: dict, step: int, max_steps:
         evidence_score *= 0.5
     score += evidence_score
 
-    score = round(min(max(score, 0.001), 0.999), 3)
+    score = round(min(max(score, 0.01), 0.99), 3)
 
     feedback_parts = [
         verdict_feedback,

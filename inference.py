@@ -311,7 +311,7 @@ def run_task(client, tavily: TavilyClient, task_name: str) -> dict:
                 break
 
         score   = sum(rewards) / max(len(rewards), 1) if rewards else 0.0
-        score   = round(min(max(score, 0.001), 0.999), 3)
+        score   = round(min(max(score, 0.01), 0.99), 3)
         success = score >= 0.3
 
     except Exception as exc:
