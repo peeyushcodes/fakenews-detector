@@ -335,6 +335,9 @@ class FakeNewsEnv:
 
     def state(self) -> Dict[str, Any]:
         """Return current environment state."""
+        raw_rewards = self._rewards
+        avg_reward = round(sum(raw_rewards) / max(len(raw_rewards), 1), 3) if raw_rewards else 0.01
+        avg_reward = round(min(max(avg_reward, 0.01), 0.99), 3)
         return {
             "task_name": self.task_name,
             "difficulty": self.task["difficulty"],
@@ -343,8 +346,8 @@ class FakeNewsEnv:
             "claim_index": self._claim_index,
             "total_claims": self._total_claims,
             "done": self._done,
-            "rewards_so_far": self._rewards,
-            "cumulative_reward": sum(self._rewards),
+            "rewards_so_far": [round(min(max(r, 0.01), 0.99), 3) for r in raw_rewards],
+            "avg_reward": avg_reward,
         }
 
     def _make_observation(self, feedback: Optional[str] = None, final: bool = False) -> FakeNewsObservation:
@@ -352,7 +355,7 @@ class FakeNewsEnv:
             # Return a terminal observation
             return FakeNewsObservation(
                 claim="[EPISODE COMPLETE]",
-                context=f"You completed all {self._total_claims} claims. Total reward: {sum(self._rewards):.2f}",
+                context=f"You completed all {self._total_claims} claims.",
                 source="N/A",
                 task_name=self.task_name,
                 step=self._step,

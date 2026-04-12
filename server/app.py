@@ -89,9 +89,10 @@ def step(req: StepRequest):
         key_evidence=req.key_evidence,
     )
     result = env.step(action)
+    safe_reward = round(min(max(float(result.reward), 0.01), 0.99), 3)
     return StepResponse(
         observation=result.observation.model_dump(),
-        reward=result.reward,
+        reward=safe_reward,
         done=result.done,
         info=result.info,
     )
